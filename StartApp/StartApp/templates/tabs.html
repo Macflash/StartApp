@@ -1,0 +1,23 @@
+﻿<div ng-controller="appTabsController" style="padding: 5px 0 20px 0">
+    <tabset>
+        <tab heading="Game">
+            <input type="button" value="Start" ng-click="start()" />
+            <!--<input type="button" value="Save" ng-click="save()" /> -->
+            <input type="button" value="Stop" ng-click="clear()" />
+        </tab>
+        <tab heading="Employees">
+            <input type="button" value="Hire" ng-click="hire()" />
+            <input type="button" value="Fire" ng-click="fire()" />
+        </tab>
+        <tab heading="Build">
+            {{currentClickType}} // 
+            <input type="button" value="Wall" ng-click="setClickType('wall')" />
+            <input type="button" value="Big Desk" ng-click="setClickType('bigdesk')" />
+            <input type="button" value="Desk" ng-click="setClickType('desk')" />
+            <input type="button" value="Computer" ng-click="setClickType('computer')" />
+            <input type="button" value="Monitor" ng-click="setClickType('monitor')" />
+            <input type="button" value="Demolish" ng-click="setClickType('demolish')" />
+            <input type="button" value="Cancel" ng-click="setClickType('select')" />
+        </tab>
+    </tabset>
+</div>

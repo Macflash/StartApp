@@ -1,0 +1,8 @@
+﻿.nav, .pagination, .carousel, .panel-title a { cursor: pointer; }
+body {
+    font-family: 'Segoe UI', sans-serif;
+}
+
+span {
+    font-style: italic;
+}

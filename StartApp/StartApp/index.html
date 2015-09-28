@@ -1,0 +1,35 @@
+﻿<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>StartApp</title>
+    <link rel="stylesheet" href="css/bootstrap-theme.css" type="text/css" />
+    <script src="vendor/jquery-2.1.4.min.js"></script>
+    <script src="vendor/angular.js"></script>
+    <script src="vendor/angular-cookies.js"></script>
+    <script src="vendor/ui-bootstrap-tpls-0.13.4.min.js"></script>
+    <script src="vendor/raphael-min.js"></script>
+    <script src="game.js"></script>
+    <script src="startapp.js"></script>
+    <link rel="stylesheet" href="css/app.css" type="text/css" />
+    <link rel="stylesheet" href="css/bootstrap.css" type="text/css" />
+</head>
+<body>
+    <div ng-app="startApp">
+        <div ng-controller="mainGameController">
+            <div ng-hide="playing">
+                Welcome! Would you like to play?
+                <input type="button" value="PLAY!" ng-click="playing=true; start();" />
+            </div>
+            <div ng-show="playing">
+                <div app-tabs></div>
+                <div style="clear:both;">
+                    <div app-sidebar style="float:left;"></div>
+                    <div id="StartAppCanvas" style="float:left;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
