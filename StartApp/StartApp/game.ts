@@ -1,14 +1,14 @@
 ﻿/// <reference path="inc/raphael.d.ts" />
 
-//var CurrentClickType = null;
-//function ClickHandler(x: number, y: number, type: string) {
-//    console.log(type + " click at " + x + ", " + y);
-//    console.log(CurrentClickType);
-//}
-
 enum GameVals { ticksPerDay = 100, daysPerPayPeriod = 7, updateInterval = 50, tileSize = 25 };
 
 enum ClickType { SELECT, DEMOLISH, BUILD };
+
+enum SlotType { floor, counter, workspace, computer, monitor, exit };
+
+enum NeedLevel { satisfied, want, urgent };
+
+enum Need { sleep, water, food, bathroom, nicotin, work, coffee, fun };
 
 class Game {
     tick: number;
@@ -61,7 +61,7 @@ class Game {
             }
         }
         else if (clicktype == 'wall') {
-            if (cur.provides == FurnitureHeight.floor) {
+            if (cur.provides == SlotType.floor) {
                 this.office.add(x, y, new Wall());
             }
             else {
@@ -69,7 +69,7 @@ class Game {
             }
         }
         else if (clicktype == 'desk') {
-            if (cur.provides == FurnitureHeight.floor) {
+            if (cur.provides == SlotType.floor) {
                 this.office.add(x, y, new BasicDeskPiece());
             }
             else {
@@ -77,7 +77,7 @@ class Game {
             }
         }
         else if (clicktype == 'bigdesk') {
-            if (cur.provides == FurnitureHeight.floor) {
+            if (cur.provides == SlotType.floor) {
                 this.office.add(x, y, new BigDesk());
             }
             else {
@@ -85,7 +85,7 @@ class Game {
             }
         }
         else if (clicktype == 'computer') {
-            if (cur.provides == FurnitureHeight.counter) {
+            if (cur.provides == SlotType.counter) {
                 this.office.add(x, y, new Computer());
             }
             else {
@@ -93,7 +93,7 @@ class Game {
             }
         }
         else if (clicktype == 'monitor') {
-            if (cur.provides == FurnitureHeight.counter) {
+            if (cur.provides == SlotType.counter) {
                 this.office.add(x, y, new Monitor());
             }
             else {
@@ -119,6 +119,12 @@ class Office {
                 this.grid[i][j] = new Floor();
                 if (j == 0 || j == this.height - 1) {
                     this.grid[i][j].slot = new Wall();
+                }
+                if (Math.random() > .8 && (i != 1 && j != 1)) {
+                    this.grid[i][j].slot = new Wall();
+                }
+                if (i == 20 && j == 8){
+                    this.grid[i][j].slot = new WorkSpot();
                 }
             }
         }
@@ -158,8 +164,6 @@ class Office {
     }
 }
 
-enum FurnitureHeight { floor, counter, workspace, computer, monitor };
-
 interface IFurniture {
     // for tree structure of large furniture
     parent: IFurniture;
@@ -170,12 +174,14 @@ interface IFurniture {
     drawingElements: Array<any>;
 
     // needs certain height to be placed, and can provide one height for more furniture
-    requires: FurnitureHeight;
-    provides: FurnitureHeight;
+    requires: SlotType;
+    provides: SlotType;
 
     slot: IFurniture;
     draw(paper: RaphaelPaper, x: number, y: number, clickHandler: Function);
     destroy();
+    passable(): boolean;
+    tileProvides(type: SlotType): boolean;
 }
 
 abstract class Furniture implements IFurniture {
@@ -188,8 +194,8 @@ abstract class Furniture implements IFurniture {
     drawingElements: Array<RaphaelElement>;
 
     // needs certain height to be placed, and can provide one height for more furniture
-    requires: FurnitureHeight;
-    provides: FurnitureHeight;
+    requires: SlotType;
+    provides: SlotType;
     slot: IFurniture;
 
     draw(paper: RaphaelPaper, x: number, y: number, clickHandler: Function) {
@@ -230,12 +236,37 @@ abstract class Furniture implements IFurniture {
             this.drawingElements = null;
         }
     }
+    passable(): boolean {
+        // if we dont have floor available we aren't passable
+        if (this.provides != SlotType.floor && this.provides != SlotType.workspace) {
+            return false;
+        }
+        // if we have children in our floor slot then let them decide
+        if (this.slot != null) {
+            return this.slot.passable();
+        }
+        // otherwise we are clear!
+        return true;
+    }
+    tileProvides(type: SlotType): boolean {
+        // if we provide this then we got it covered!
+        if (this.provides == type) {
+            console.log("hey we provide this!");
+            return true;
+        }
+        // if we have children in our slot then let them decide
+        if (this.slot != null) {
+            return this.slot.tileProvides(type);
+        }
+        // otherwise we dont!
+        return false;
+    }
 }
 
 class Floor extends Furniture {
     constructor() {
         super();
-        this.provides = FurnitureHeight.floor;
+        this.provides = SlotType.floor;
     }
     draw(paper: RaphaelPaper, x: number, y: number, clickHandler: Function) {
         // we have no drawing elements!
@@ -255,7 +286,7 @@ class Floor extends Furniture {
 class Wall extends Furniture {
     constructor() {
         super();
-        this.requires = FurnitureHeight.floor;
+        this.requires = SlotType.floor;
     }
     draw(paper: RaphaelPaper, x: number, y: number, clickHandler: Function) {
         // we have no drawing elements!
@@ -273,8 +304,8 @@ class Wall extends Furniture {
 class BasicDeskPiece extends Furniture {
     constructor() {
         super();
-        this.requires = FurnitureHeight.floor;
-        this.provides = FurnitureHeight.counter;
+        this.requires = SlotType.floor;
+        this.provides = SlotType.counter;
     }
     draw(paper: RaphaelPaper, x: number, y: number, clickHandler: Function) {
         // we have no drawing elements!
@@ -292,8 +323,8 @@ class BasicDeskPiece extends Furniture {
 class WorkSpot extends Furniture {
     constructor() {
         super();
-        this.requires = FurnitureHeight.floor;
-        this.provides = FurnitureHeight.workspace;
+        this.requires = SlotType.floor;
+        this.provides = SlotType.workspace;
     }
     draw(paper: RaphaelPaper, x: number, y: number, clickHandler: Function) {
         // we have no drawing elements!
@@ -311,8 +342,8 @@ class WorkSpot extends Furniture {
 class BigDesk extends Furniture {
     constructor() {
         super();
-        this.requires = FurnitureHeight.floor;
-        this.provides = FurnitureHeight.counter;
+        this.requires = SlotType.floor;
+        this.provides = SlotType.counter;
         this.downChild = new BasicDeskPiece();
         this.downChild.parent = this;
         this.rightChild = new BasicDeskPiece();
@@ -340,8 +371,8 @@ class BigDesk extends Furniture {
 class Computer extends Furniture{
     constructor() {
         super();
-        this.requires = FurnitureHeight.counter;
-        this.provides = FurnitureHeight.computer;
+        this.requires = SlotType.counter;
+        this.provides = SlotType.computer;
     }
     draw(paper: RaphaelPaper, x: number, y: number, clickHandler: Function) {
         // we have no drawing elements!
@@ -361,8 +392,8 @@ class Computer extends Furniture{
 class Monitor extends Furniture{
     constructor() {
         super();
-        this.requires = FurnitureHeight.counter;
-        this.provides = FurnitureHeight.monitor;
+        this.requires = SlotType.counter;
+        this.provides = SlotType.monitor;
     }
     draw(paper: RaphaelPaper, x: number, y: number, clickHandler: Function) {
         // we have no drawing elements!
@@ -385,27 +416,67 @@ class Employee {
     salary: number;
     tick: number;
     drawingElements: Array<RaphaelElement>;
+    path: PathNode;
     constructor() {
-        this.x = 0;
-        this.y = 0;
+        this.x = 1;
+        this.y = 1;
         this.salary = 100;
         this.tick = 0;
         this.drawingElements = new Array<RaphaelElement>();
     }
-    update() {
+    move(office: Office) {
+        if (office.grid[this.x][this.y].tileProvides(SlotType.workspace)){
+            console.log("THERE!");
+        }
+        else if (this.path == null) {
+            var start = new Date().getTime();
+            var searcher = new SearchGrid(new Coord(this.x, this.y), SlotType.workspace, office);
+            var result = searcher.run();
+            this.path = result.toPath();
+            var end = new Date().getTime();
+            var time = end - start;
+            console.log('Execution time: ' + time);
+            console.log(this.path);
+        }
+        else {
+            //follow path
+            if (this.x == this.path.x && this.y == this.path.y) {
+                this.path = this.path.next;
+                //can we go there?
+                if (office.grid[this.path.x][this.path.y].passable()) {
+                    //move there!
+                    this.x = this.path.x;
+                    this.y = this.path.y;
+                }
+                else {
+                    console.log("recalculating!");
+                    this.path = null;
+                }
+            }
+            else {
+                console.log("TRIED TO FOLLOW PATH YOU WERENT ON");
+            }
+        }
+    }
+    update(office: Office) {
         this.tick++;
         if (this.tick > 10) {
             this.tick = 0;
-            if (this.y < 5) {
-                this.y += 1;
-            }
-            if (this.x < 20) {
-                this.x += 1
-            }
-            return 1;
+            //are we doing something already?
+
+            //yes? do it!
+
+            //no? figure out what we need to do
+
+            //see if we can do it here
+
+            // yes? do it!
+
+            // no? MOVE it!
+            this.move(office);
         }
-        return 0;
     }
+
     draw(paper: RaphaelPaper) {
         if (this.drawingElements.length == 0) {
             var e = paper.circle((this.x + .5) * GameVals.tileSize, (this.y + .5) * GameVals.tileSize, GameVals.tileSize * .4).attr({ fill: '#f00', stroke: 'f00' });
@@ -416,12 +487,178 @@ class Employee {
                 "cx": (this.x + .5) * GameVals.tileSize,
                 "cy": (this.y + .5) * GameVals.tileSize
             }, GameVals.updateInterval * 10, ">");
-            //array[index] = value.attr("cx", (this.x + .5) * GameVals.tileSize);
-            //array[index] = value.attr("cy", (this.y + .5) * GameVals.tileSize);
         });
     }
+
     destroy() {
         this.drawingElements.forEach((value: RaphaelElement) => { value.remove(); });
         this.drawingElements = null;
     }
+    
+}
+
+class PathNode {
+    x: number;
+    y: number;
+    next: PathNode;
+    constructor(x: number, y: number, n: PathNode) {
+        this.x = x;
+        this.y = y;
+        this.next = n;
+    }
+}
+
+class SearchNode {
+    parent: SearchNode
+    c: Coord;
+    fscore: number;
+    constructor(c: Coord, f: number, parent?: SearchNode) {
+        this.c = c;
+        this.fscore = f;
+        this.parent = parent;
+    }
+    toPath(nextNodes?: PathNode): PathNode {
+        // need to navigate backwards
+        var cur = new PathNode(this.c.x, this.c.y, nextNodes);
+        if (this.parent == null) {
+            return cur;
+        }
+        return this.parent.toPath(cur);
+    }
+}
+
+class SearchGrid {
+    // the type of stuff we are looking for
+    type: SlotType;
+    office: Office;
+    open: Array<SearchNode>;
+    closed: Array<SearchNode>;
+    result: SearchNode;
+    getLowest(array: Array<SearchNode>): SearchNode {
+        var min = Number.MAX_VALUE;
+        var mindex = -1;
+        for (var index in array) {
+            if (array[index].fscore <= min) {
+                min = array[index].fscore;
+                mindex = index;
+            }
+        }
+        if (mindex == -1) {
+            console.log("ERROR: didn't find lowest");
+        }
+        return array[mindex];
+    }
+    contains(array: Array<SearchNode>, coord: Coord): boolean {
+        for (var k in array) {
+            if (array[k].c.x == coord.x && array[k].c.y == coord.y) { return true; }
+        }
+        return false;
+    }
+    remove(n: SearchNode, array: Array<SearchNode>): void {
+        for (var k in array){
+            if (n == array[k]) { array.splice(k, 1); break; }
+        }
+    }
+    run(): SearchNode {
+        //console.log("20,8:" + this.office.grid[20][8].tileProvides(SlotType.workspace));
+        var i = 0;
+        while (i < 1000) {
+            if (i % 1 == 0) {
+                //console.log(i);
+                //console.log("open: " + this.open.length);
+               // console.log("closed: " + this.closed.length);
+                //console.log("closed has 1,1: " + this.contains(this.closed, new Coord(1, 1)));
+                //console.log("open has 1,1: " + this.contains(this.open, new Coord(1, 1)));
+            }
+            i++;            
+            // breadth first means first one we find is probably best
+            var cur = this.getLowest(this.open);
+            //check if we are the result
+            if (this.office.grid[cur.c.x][cur.c.y].tileProvides(this.type)) {
+          //      console.log("hey!!!");
+                return cur;
+            }
+
+            //add neighbors of lowest
+            //check passable, and not in closed list
+            var l = cur.c.left();
+            if (!this.contains(this.open, l) && !this.contains(this.closed, l)) {
+                if (this.office.grid[l.x][l.y].passable()) {
+                    var s = new SearchNode(l, cur.fscore + 1, cur);
+                    if (this.office.grid[s.c.x][s.c.y].tileProvides(this.type)) {
+                        return s;
+                    }
+                    this.open.push(s);
+                }
+            }
+            var r = cur.c.right(this.office.width);
+            if (!this.contains(this.open, r) && !this.contains(this.closed, r)) {
+                //console.log("not closed or open yet checking if passable");
+                if (this.office.grid[r.x][r.y].passable()) {
+                    //console.log("tile was passable");
+                    var s = new SearchNode(r, cur.fscore + 1, cur);
+                    if (this.office.grid[s.c.x][s.c.y].tileProvides(this.type)) {
+                        return s;
+                    }
+                    this.open.push(s);
+                }
+            }
+            var u = cur.c.up();
+            if (!this.contains(this.open, u) && !this.contains(this.closed, u)) {
+                if (this.office.grid[u.x][u.y].passable()) {
+                    var s = new SearchNode(u, cur.fscore + 1, cur);
+                    if (this.office.grid[s.c.x][s.c.y].tileProvides(this.type)) {
+                        return s;
+                    }
+                    this.open.push(s);
+                }
+            }
+            var d = cur.c.down(this.office.height);
+            if (!this.contains(this.open, d) && !this.contains(this.closed, d)) {
+                if (this.office.grid[d.x][d.y].passable()) {
+                    var s = new SearchNode(d, cur.fscore + 1, cur);
+                    if (this.office.grid[s.c.x][s.c.y].tileProvides(this.type)) {
+                        return s;
+                    }
+                    this.open.push(s);
+                }
+            }
+            this.remove(cur, this.open);
+            this.closed.push(cur);
+        }
+        console.log("timmeeed out!");
+    }
+    constructor(start: Coord, type: SlotType, o: Office) {
+        this.type = type;
+        this.office = o;
+        this.open = new Array<SearchNode>();
+        this.closed = new Array<SearchNode>();
+        this.open.push(new SearchNode(start, 0));
+    }
+}
+
+class Coord {
+    x: number;
+    y: number;
+    constructor(x: number, y: number) {
+        this.x = x;
+        this.y = y;
+    }
+    left() { if (this.x <= 0) { return this; } return new Coord(this.x - 1, this.y); }
+    right(max: number) { if (this.x + 1 >= max) { return this; } return new Coord(this.x + 1, this.y); }
+    up() { if (this.y <= 0) { return this; } return new Coord(this.x, this.y - 1); }
+    down(max: number) { if (this.y + 1 >= max) { return this; } return new Coord(this.x, this.y + 1); }
+}
+
+interface Effect {
+    need: Need;
+    amount: number;
+    duration: number;
+}
+
+interface INeed {
+    amt: number;
+    frequency: number;
+    update(effects: Array<Effect>): NeedLevel;
+    satiate(newLevel: NeedLevel): void;
 }

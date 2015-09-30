@@ -41,7 +41,7 @@ app.controller('mainGameController', function ($scope, $interval) {
     }
     $scope.update = function () {
         for (var e in $scope.game.employees) {
-            $scope.game.code += $scope.game.employees[e].update();
+            $scope.game.code += $scope.game.employees[e].update($scope.game.office);
         }
     }
     $scope.run = function () {
