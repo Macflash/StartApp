@@ -1,14 +1,65 @@
 ﻿/// <reference path="inc/raphael.d.ts" />
 
-enum GameVals { ticksPerDay = 100, daysPerPayPeriod = 7, updateInterval = 50, tileSize = 25 };
+enum GameVals { ticksPerDay = 960, daysPerPayPeriod = 7, updateInterval = 50, tileSize = 25 };
 
 enum ClickType { SELECT, DEMOLISH, BUILD };
 
-enum SlotType { floor, counter, workspace, computer, monitor, exit };
+enum SlotType { floor, counter, workspace, computer, monitor, exit, toilet, sink, coffeemachine };
 
 enum NeedLevel { satisfied, want, urgent };
 
-enum Need { sleep, water, food, bathroom, nicotin, work, coffee, fun };
+enum NeedType { sleep, water, food, bathroom, nicotine, work, coffee, fun };
+
+// can have multiple requirements, like time
+// or multiple steps which could be like a chain of actions
+class Action {
+    progress: number;
+    ticksToFinish: number;
+    satisfies: NeedType;
+    requires: SlotType[];
+    name: string;
+    hoursToFinish: any;
+    constructor(name: string, hoursToFinish: number, satisfies: NeedType, requires: SlotType[]) {
+        this.name = name;
+        this.satisfies = satisfies;
+        this.requires = requires;
+        this.ticksToFinish = GameVals.ticksPerDay * hoursToFinish / 24;
+        this.progress = 0;
+        this.hoursToFinish = hoursToFinish;
+    }
+    clone(): Action {
+        return new Action(this.name, this.hoursToFinish, this.satisfies, this.requires); 
+    }
+    done(): boolean {
+        this.progress++;
+        if (this.progress >= this.ticksToFinish) {
+            return true;
+        }
+        return false;
+    }
+}
+
+var Actions = new Array<Action>();
+//Actions.push(new Action("Sleep", 6, NeedType.sleep, [SlotType.exit]));
+//Actions.push(new Action("Get Water", 0, NeedType.water, [SlotType.sink]));
+Actions.push(new Action("Get Food", 1, NeedType.food, [SlotType.exit]));
+//Actions.push(new Action("Use Bathroom", 0, NeedType.bathroom, [SlotType.toilet]));
+Actions.push(new Action("Smoke", 0, NeedType.nicotine, [SlotType.exit]));
+Actions.push(new Action("Work", .5, NeedType.work, [SlotType.computer, SlotType.monitor]));
+//Actions.push(new Action("Make Coffee", .1, NeedType.coffee, [SlotType.coffeemachine]));
+
+function FindAction(need: NeedType) {
+    for (var k in Actions) {
+        if (Actions[k].satisfies == need) {
+            var t = Actions[k].clone();
+            console.log("picked " + t.name + " it will take " + t.ticksToFinish); 
+            return t;
+        }
+    }
+    //anything that can't be done at work results in going home, where all needs are reset
+    console.log("can't get satisfaction for " + need);
+    return new Action("GO HOME for " + NeedType[need], 1, need, [SlotType.exit]);
+}
 
 class Game {
     tick: number;
@@ -47,7 +98,7 @@ class Game {
         // check the clicktype
         if (clicktype == 'demolish') { 
             if (last == null) {
-                console.log("Can't demolish floor");
+                console.log("Can't demolish that");
                 console.log(cur);
             }  
             else {
@@ -120,11 +171,11 @@ class Office {
                 if (j == 0 || j == this.height - 1) {
                     this.grid[i][j].slot = new Wall();
                 }
-                if (Math.random() > .8 && (i != 1 && j != 1)) {
+                if (i == 0 || i == this.width - 1) {
                     this.grid[i][j].slot = new Wall();
                 }
-                if (i == 20 && j == 8){
-                    this.grid[i][j].slot = new WorkSpot();
+                if (i == 0 && j == 1) {
+                    this.grid[i][j].slot = new Exit();
                 }
             }
         }
@@ -138,7 +189,7 @@ class Office {
         }
     }
 
-    add(x: number, y: number, item: IFurniture): boolean {
+    canAdd(x: number, y: number, item: IFurniture): boolean {
         var last = null;
         var cur = this.grid[x][y];
         while (cur.slot != null) {
@@ -146,19 +197,47 @@ class Office {
             cur = cur.slot;
         }
         if (cur.provides == item.requires) {
-            cur.slot = item;
             if (item.downChild != null) {
-                if (!this.add(x, y + 1, item.downChild)) {
+                if (!this.canAdd(x, y + 1, item.downChild)) {
                     return false;
                 }
             }
-            if (item.rightChild != null){
-                if (!this.add(x + 1, y, item.rightChild)) {
+            if (item.rightChild != null) {
+                if (!this.canAdd(x + 1, y, item.rightChild)) {
                     return false;
                 }
             }
-            cur.slot = item;
             return true;
+        }
+
+        return false;
+    }
+    
+    //if this returns true you should charge them for the furniture
+    add(x: number, y: number, item: IFurniture): boolean {
+        if (this.canAdd(x, y, item)) {
+            var last = null;
+            var cur = this.grid[x][y];
+            while (cur.slot != null) {
+                last = cur;
+                cur = cur.slot;
+            }
+            if (cur.provides == item.requires) {
+                if (item.downChild != null) {
+                    if (!this.add(x, y + 1, item.downChild)) {
+                        console.log("ERROR: BAD ITEM ADD");
+                        return false;
+                    }
+                }
+                if (item.rightChild != null) {
+                    if (!this.add(x + 1, y, item.rightChild)) {
+                        console.log("ERROR: BAD ITEM ADD");
+                        return false;
+                    }
+                }
+                cur.slot = item;
+                return true;
+            }
         }
         return false;
     }
@@ -181,7 +260,9 @@ interface IFurniture {
     draw(paper: RaphaelPaper, x: number, y: number, clickHandler: Function);
     destroy();
     passable(): boolean;
-    tileProvides(type: SlotType): boolean;
+
+    // what this piece itself provides
+    tileProvides(x?: boolean): SlotType[];
 }
 
 abstract class Furniture implements IFurniture {
@@ -238,7 +319,7 @@ abstract class Furniture implements IFurniture {
     }
     passable(): boolean {
         // if we dont have floor available we aren't passable
-        if (this.provides != SlotType.floor && this.provides != SlotType.workspace) {
+        if (this.provides != SlotType.floor) {
             return false;
         }
         // if we have children in our floor slot then let them decide
@@ -248,18 +329,24 @@ abstract class Furniture implements IFurniture {
         // otherwise we are clear!
         return true;
     }
-    tileProvides(type: SlotType): boolean {
-        // if we provide this then we got it covered!
-        if (this.provides == type) {
-            console.log("hey we provide this!");
-            return true;
-        }
-        // if we have children in our slot then let them decide
+    tileProvides(x?: boolean): SlotType[] {
+        var types = new Array<SlotType>();
+        types.push(this.provides);
+
+        // if we have children in our slot then what we provide doesn't matter, its used
         if (this.slot != null) {
-            return this.slot.tileProvides(type);
+            types = this.slot.tileProvides(x);
         }
-        // otherwise we dont!
-        return false;
+        // but we should see what our children have too
+        if (this.rightChild != null) {
+            types = types.concat(this.rightChild.tileProvides(x));
+        }
+        if (this.downChild != null) {
+            types = types.concat(this.downChild.tileProvides(x));
+        }
+
+        return types;
+
     }
 }
 
@@ -326,16 +413,51 @@ class WorkSpot extends Furniture {
         this.requires = SlotType.floor;
         this.provides = SlotType.workspace;
     }
+    passable() {
+        return true;
+    }
     draw(paper: RaphaelPaper, x: number, y: number, clickHandler: Function) {
         // we have no drawing elements!
         if (this.drawingElements.length == 0) {
             // Create our drawing element
             var e = paper.rect(x * GameVals.tileSize, y * GameVals.tileSize, GameVals.tileSize, GameVals.tileSize
-            ).attr({ fill: '#33FF33', opacity: '.5' });
+            ).attr({ fill: '#33FF33', opacity: '.2' });
             e.click(function () { clickHandler(x, y, "workspot"); });
             this.drawingElements.push(e);
         }
         super.draw(paper, x, y, clickHandler);
+    }
+    tileProvides(x?: boolean): SlotType[] {
+        //catch if we get called by our own parent
+        if (x === true) {
+            return [];
+        }
+        return this.parent.tileProvides(true);
+    }
+}
+
+class Exit extends Furniture {
+    constructor() {
+        super();
+        this.requires = SlotType.floor;
+        this.provides = SlotType.exit;
+    }
+    passable() {
+        return true;
+    }
+    draw(paper: RaphaelPaper, x: number, y: number, clickHandler: Function) {
+        // we have no drawing elements!
+        if (this.drawingElements.length == 0) {
+            // Create our drawing element
+            var e = paper.rect(x * GameVals.tileSize, y * GameVals.tileSize, GameVals.tileSize, GameVals.tileSize
+            ).attr({ fill: '#ff3333', opacity: '.5' });
+            e.click(function () { clickHandler(x, y, "exit"); });
+            this.drawingElements.push(e);
+        }
+        super.draw(paper, x, y, clickHandler);
+    }
+    tileProvides(x?: boolean): SlotType[] {
+        return [SlotType.exit];
     }
 }
 
@@ -410,71 +532,124 @@ class Monitor extends Furniture{
     }
 }
 
+function Contains(hay: SlotType[], needles: SlotType[]): boolean{
+    for (var index in needles) {
+        var found = false;
+        for (var jindex in hay) {
+            if (needles[index] == hay[jindex]) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            return false;
+        }
+    }
+    return true;
+}
+
 class Employee {
     x: number;
     y: number;
     salary: number;
-    tick: number;
+    needs: Needs;
     drawingElements: Array<RaphaelElement>;
     path: PathNode;
+    currentAction: Action;
+    moveTicks: number;
     constructor() {
+        this.moveTicks = 0;
         this.x = 1;
         this.y = 1;
         this.salary = 100;
-        this.tick = 0;
         this.drawingElements = new Array<RaphaelElement>();
+        // sleep, water, food, bathroom, nicotine, work, coffee, fun };
+        this.needs = new Needs([1, 1.1, 1.5, 2, 0, 8, 1.9, .5]);
     }
-    move(office: Office) {
-        if (office.grid[this.x][this.y].tileProvides(SlotType.workspace)){
-            console.log("THERE!");
+    move(wants: SlotType[], office: Office) {
+        if (Contains(office.grid[this.x][this.y].tileProvides(), wants)) {
+            //console.log("THERE!");
         }
         else if (this.path == null) {
             var start = new Date().getTime();
-            var searcher = new SearchGrid(new Coord(this.x, this.y), SlotType.workspace, office);
+            var searcher = new SearchGrid(new Coord(this.x, this.y), wants, office);
             var result = searcher.run();
-            this.path = result.toPath();
+            if (result != null) {
+                this.path = result.toPath();
+            }
+            else {
+                console.log("no lowest for " + wants);
+            }
             var end = new Date().getTime();
             var time = end - start;
-            console.log('Execution time: ' + time);
-            console.log(this.path);
+            //console.log('Execution time: ' + time);
+            //console.log(this.path);
         }
         else {
             //follow path
             if (this.x == this.path.x && this.y == this.path.y) {
                 this.path = this.path.next;
-                //can we go there?
-                if (office.grid[this.path.x][this.path.y].passable()) {
-                    //move there!
-                    this.x = this.path.x;
-                    this.y = this.path.y;
+                if (this.path != null) {
+                    //can we go there?
+                    if (office.grid[this.path.x][this.path.y].passable()) {
+                        //move there!
+                        this.x = this.path.x;
+                        this.y = this.path.y;
+                    }
+                    else {
+                        console.log("recalculating!");
+                        this.path = null;
+                    }
                 }
                 else {
-                    console.log("recalculating!");
-                    this.path = null;
+                    //just wait till the next turn, cause we havent checked if this tile works for us.
+                    //console.log("ERROR: tried to move to the next node even though this is the end");
                 }
             }
             else {
-                console.log("TRIED TO FOLLOW PATH YOU WERENT ON");
+                console.log("WTF TRIED TO FOLLOW PATH YOU WERENT ON!!!!!");
             }
         }
     }
-    update(office: Office) {
-        this.tick++;
-        if (this.tick > 10) {
-            this.tick = 0;
-            //are we doing something already?
+    update(office: Office): number {
+        var c = 0;
+        this.moveTicks++;
+        //update needs
+        var t = this.needs.update(null);
 
-            //yes? do it!
-
-            //no? figure out what we need to do
-
-            //see if we can do it here
-
-            // yes? do it!
-
-            // no? MOVE it!
-            this.move(office);
+        //are we doing something already?
+        if (this.currentAction != null) {
+            
+            // are we there?
+            if (Contains(office.grid[this.x][this.y].tileProvides(), this.currentAction.requires)) {
+                if (this.currentAction.done()) {
+                    if (this.currentAction.satisfies == NeedType.work) {
+                        c = 1;
+                    }
+                    //console.log("finished " + this.currentAction.name);
+                    if (this.currentAction.satisfies != null) {
+                        //console.log("this finished action satisfies " + this.currentAction.satisfies);
+                        this.needs.satiate(this.currentAction.satisfies, NeedLevel.satisfied);
+                        //console.log(this.needs);
+                    }
+                    this.currentAction = null;
+                }
+            }
+            else {
+                if (this.moveTicks > 4) {
+                    this.move(this.currentAction.requires, office);
+                    this.moveTicks = 0;
+                }
+                //wait 10 ticks now
+                //this.currentAction = new Action("moving", .1, null, [SlotType.floor]);
+            }
         }
+        else {
+            this.currentAction = FindAction(t);
+            //console.log("picked " + this.currentAction.name);
+            //console.log(this.needs);
+        }
+        return c;
     }
 
     draw(paper: RaphaelPaper) {
@@ -529,7 +704,7 @@ class SearchNode {
 
 class SearchGrid {
     // the type of stuff we are looking for
-    type: SlotType;
+    types: SlotType[];
     office: Office;
     open: Array<SearchNode>;
     closed: Array<SearchNode>;
@@ -560,22 +735,18 @@ class SearchGrid {
         }
     }
     run(): SearchNode {
-        //console.log("20,8:" + this.office.grid[20][8].tileProvides(SlotType.workspace));
         var i = 0;
         while (i < 1000) {
-            if (i % 1 == 0) {
-                //console.log(i);
-                //console.log("open: " + this.open.length);
-               // console.log("closed: " + this.closed.length);
-                //console.log("closed has 1,1: " + this.contains(this.closed, new Coord(1, 1)));
-                //console.log("open has 1,1: " + this.contains(this.open, new Coord(1, 1)));
-            }
             i++;            
             // breadth first means first one we find is probably best
             var cur = this.getLowest(this.open);
+            if (cur == null) {
+                // try again?
+                return null;
+            }
+
             //check if we are the result
-            if (this.office.grid[cur.c.x][cur.c.y].tileProvides(this.type)) {
-          //      console.log("hey!!!");
+            if (Contains(this.office.grid[cur.c.x][cur.c.y].tileProvides(), this.types)) {
                 return cur;
             }
 
@@ -585,7 +756,7 @@ class SearchGrid {
             if (!this.contains(this.open, l) && !this.contains(this.closed, l)) {
                 if (this.office.grid[l.x][l.y].passable()) {
                     var s = new SearchNode(l, cur.fscore + 1, cur);
-                    if (this.office.grid[s.c.x][s.c.y].tileProvides(this.type)) {
+                    if (Contains(this.office.grid[s.c.x][s.c.y].tileProvides(), this.types)) {
                         return s;
                     }
                     this.open.push(s);
@@ -597,7 +768,7 @@ class SearchGrid {
                 if (this.office.grid[r.x][r.y].passable()) {
                     //console.log("tile was passable");
                     var s = new SearchNode(r, cur.fscore + 1, cur);
-                    if (this.office.grid[s.c.x][s.c.y].tileProvides(this.type)) {
+                    if (Contains(this.office.grid[s.c.x][s.c.y].tileProvides(), this.types)) {
                         return s;
                     }
                     this.open.push(s);
@@ -607,7 +778,7 @@ class SearchGrid {
             if (!this.contains(this.open, u) && !this.contains(this.closed, u)) {
                 if (this.office.grid[u.x][u.y].passable()) {
                     var s = new SearchNode(u, cur.fscore + 1, cur);
-                    if (this.office.grid[s.c.x][s.c.y].tileProvides(this.type)) {
+                    if (Contains(this.office.grid[s.c.x][s.c.y].tileProvides(), this.types)) {
                         return s;
                     }
                     this.open.push(s);
@@ -617,7 +788,7 @@ class SearchGrid {
             if (!this.contains(this.open, d) && !this.contains(this.closed, d)) {
                 if (this.office.grid[d.x][d.y].passable()) {
                     var s = new SearchNode(d, cur.fscore + 1, cur);
-                    if (this.office.grid[s.c.x][s.c.y].tileProvides(this.type)) {
+                    if (Contains(this.office.grid[s.c.x][s.c.y].tileProvides(), this.types)) {
                         return s;
                     }
                     this.open.push(s);
@@ -628,8 +799,8 @@ class SearchGrid {
         }
         console.log("timmeeed out!");
     }
-    constructor(start: Coord, type: SlotType, o: Office) {
-        this.type = type;
+    constructor(start: Coord, types: SlotType[], o: Office) {
+        this.types = types;
         this.office = o;
         this.open = new Array<SearchNode>();
         this.closed = new Array<SearchNode>();
@@ -656,9 +827,67 @@ interface Effect {
     duration: number;
 }
 
-interface INeed {
+class Need {
     amt: number;
-    frequency: number;
-    update(effects: Array<Effect>): NeedLevel;
-    satiate(newLevel: NeedLevel): void;
+    rate: number;
+    constructor(timesPerDay: number) {
+        this.amt = 0;
+        this.rate = 100 * (timesPerDay / GameVals.ticksPerDay);
+    }
+    update(effects: Array<Effect>): NeedLevel {
+        this.amt += this.rate;
+        if (this.amt >= 150) {
+            this.amt = 150;
+            return NeedLevel.urgent
+        }
+        else if (this.amt < 100) {
+            return NeedLevel.satisfied;
+        }
+        return NeedLevel.want;
+    }
+    satiate(newLevel: NeedLevel): void {
+        if (newLevel == NeedLevel.satisfied) {
+            // boom took care of that eh?
+            this.amt = 0;
+        }
+        else if (newLevel == NeedLevel.want) {
+            // ie it satisfies the need but they still want some more soon
+            this.amt = 50;
+        }
+        else if (newLevel == NeedLevel.urgent) {
+            // basically they are gonna need it right away again
+            this.amt = 100;
+        }
+    }
+}
+
+class Needs {
+    list: Need[];
+    constructor(f: number[]) {
+        this.list = new Array<Need>();
+        for (var index in f) {
+            this.list[index] = new Need(f[index]);
+        }
+    }
+    //updates and returns most pressing need AS ITS STRING
+    update(effects: Effect[]): NeedType {
+        var highest_level = NeedLevel.satisfied;
+        var highest_need = null;
+        for (var n in this.list) {
+            var l = this.list[n].update(effects);
+            if (l > highest_level) {
+                highest_level = l;
+                highest_need = n;
+            }
+        }
+        if (highest_need == null) {
+            return NeedType.work;
+        }
+        //console.log("highest need: " + highest_need);
+        return highest_need;
+    }
+    satiate(t: NeedType, newLevel: NeedLevel): void {
+        //console.log("trying to satisfy " + t);
+        this.list[t].satiate(newLevel);
+    }
 }

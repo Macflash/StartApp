@@ -7,7 +7,12 @@
         </tab>
         <tab heading="Employees">
             <input type="button" value="Hire" ng-click="hire()" />
-            <input type="button" value="Fire" ng-click="fire()" />
+            <input type="button" value="Fire" ng-click="fire()" /><br />
+            <div employee-display-div ng-repeat="employee in game.employees" style="clear:both;">
+                <div employee-detail style="background-color: lightgray; height: 40px; float:left;">
+                    {{employee.currentAction.name}}
+                </div>
+            </div>
         </tab>
         <tab heading="Build">
             {{currentClickType}} // 
