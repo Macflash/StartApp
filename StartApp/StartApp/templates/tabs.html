@@ -9,8 +9,15 @@
             <input type="button" value="Hire" ng-click="hire()" />
             <input type="button" value="Fire" ng-click="fire()" /><br />
             <div style="clear:both; overflow-x: auto;">
-                <div ng-repeat="employee in game.employees" style="background-color: floralwhite; height: 60px; float:left;">
-                    {{employee.currentAction.name}}
+                <div ng-repeat="employee in game.employees" style="text-align: center; padding: 5px; background-color: beige; height: 50px; width: 50px; margin-right: 5px; float:left;">
+                    <div ng-show="selected!=employee.id" ng-click="$parent.$parent.$parent.selected=employee.id">
+                        {{employee.id}} <br />
+                        {{employee.currentAction.name}}
+                    </div>
+                    <div ng-show="selected==employee.id" ng-click="$parent.$parent.$parent.selected=-1" style="background-color: red;">
+                        {{employee.id}} <br />
+                        {{employee.currentAction.name}}
+                    </div>
                 </div>
             </div>
         </tab>

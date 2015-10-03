@@ -55,7 +55,7 @@ function FindAction(need: NeedType) {
         //should check here to see if there is a tile that actually provides this first
         if (Actions[k].satisfies == need) {
             var t = Actions[k].clone();
-            console.log("picked " + t.name + " it will take " + t.ticksToFinish); 
+            //console.log("picked " + t.name + " it will take " + t.ticksToFinish); 
             return t;
         }
     }
@@ -86,7 +86,7 @@ class Game {
         this.office = new Office();
 
         this.employees = new Array<Employee>();
-        this.employees.push(new Employee());
+        this.employees.push(new Employee(0));
 
         this.furniture = new Array<IFurniture>();
     }
@@ -409,7 +409,6 @@ class WorkSpot extends Furniture {
             this.occupied = null;
             return true;
         }
-        console.log("occupied");
         return false;
     }
     draw(paper: RaphaelPaper, x: number, y: number, clickHandler: Function) {
@@ -661,6 +660,7 @@ function Contains(hay: SlotType[], needles: SlotType[]): boolean{
 }
 
 class Employee {
+    id: number;
     x: number;
     y: number;
     salary: number;
@@ -669,7 +669,8 @@ class Employee {
     path: PathNode;
     currentAction: Action;
     moveTicks: number;
-    constructor() {
+    constructor(id) {
+        this.id = id;
         this.moveTicks = 0;
         this.x = 1;
         this.y = 1;
@@ -690,7 +691,7 @@ class Employee {
                 this.path = result.toPath();
             }
             else {
-                console.log("no lowest for " + wants);
+                //console.log("no lowest for " + wants);
             }
             var end = new Date().getTime();
             var time = end - start;
@@ -770,18 +771,28 @@ class Employee {
         return c;
     }
 
-    draw(paper: RaphaelPaper) {
+    draw(paper: RaphaelPaper, selected: number) {
         if (this.drawingElements.length == 0) {
-            //var e = paper.circle((this.x + .5) * GameVals.tileSize, (this.y + .5) * GameVals.tileSize, GameVals.tileSize * .4).attr({ fill: '#f00', stroke: 'f00' });
+            var e = paper.circle((this.x + .5) * GameVals.tileSize, (this.y + .5) * GameVals.tileSize,
+                GameVals.tileSize * .4).attr({ fill: '#08f', opacity: '0' });
+            this.drawingElements.push(e);
             var e = paper.image("img/dev.png", (this.x + .1) * GameVals.tileSize, (this.y + .1) * GameVals.tileSize, 16, 16);
             this.drawingElements.push(e);
         }
         this.drawingElements.forEach((value: RaphaelElement) => {
             value.animate({
                 "x": (this.x + .1) * GameVals.tileSize,
-                "y": (this.y + .1) * GameVals.tileSize
+                "y": (this.y + .1) * GameVals.tileSize,
+                "cx": (this.x + .5) * GameVals.tileSize,
+                "cy": (this.y + .5) * GameVals.tileSize
             }, GameVals.updateInterval * 10, ">");
         });
+        if (selected == this.id) {
+            this.drawingElements[0].attr({ opacity: '.5' });
+        }
+        else {
+            this.drawingElements[0].attr({ opacity: '0' });
+        }
     }
 
     destroy() {

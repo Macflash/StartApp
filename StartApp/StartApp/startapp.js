@@ -5,6 +5,8 @@
 var app = angular.module('startApp', ['ui.bootstrap']);
 
 app.controller('mainGameController', function ($scope, $interval) {
+    $scope.selected = -1;
+    $scope.employeeIdCounter = 0;
     $scope.placableFurniture = PlacableFurniture;
     console.log($scope.placableFurniture);
     $scope.playing = false;
@@ -38,7 +40,7 @@ app.controller('mainGameController', function ($scope, $interval) {
     $scope.draw = function () {
         $scope.game.office.draw($scope.paper, $scope.ClickHandler);
         for (var e in $scope.game.employees) {
-            $scope.game.employees[e].draw($scope.paper);
+            $scope.game.employees[e].draw($scope.paper, $scope.selected);
         }
     }
     $scope.update = function () {
@@ -77,7 +79,8 @@ app.controller('mainGameController', function ($scope, $interval) {
     }
 
     $scope.hire = function () {
-        $scope.game.employees.push(new Employee());
+        $scope.employeeIdCounter++;
+        $scope.game.employees.push(new Employee($scope.employeeIdCounter));
     }
 
     $scope.fire = function () {

@@ -88,7 +88,7 @@ function FindAction(need) {
         //should check here to see if there is a tile that actually provides this first
         if (Actions[k].satisfies == need) {
             var t = Actions[k].clone();
-            console.log("picked " + t.name + " it will take " + t.ticksToFinish);
+            //console.log("picked " + t.name + " it will take " + t.ticksToFinish); 
             return t;
         }
     }
@@ -107,7 +107,7 @@ var Game = (function () {
         this.bugs = new Array();
         this.office = new Office();
         this.employees = new Array();
-        this.employees.push(new Employee());
+        this.employees.push(new Employee(0));
         this.furniture = new Array();
     }
     Game.prototype.clickHandler = function (clicktype, x, y, sourcetype) {
@@ -373,7 +373,6 @@ var WorkSpot = (function (_super) {
             this.occupied = null;
             return true;
         }
-        console.log("occupied");
         return false;
     };
     WorkSpot.prototype.draw = function (paper, x, y, clickHandler) {
@@ -608,7 +607,8 @@ function Contains(hay, needles) {
     return true;
 }
 var Employee = (function () {
-    function Employee() {
+    function Employee(id) {
+        this.id = id;
         this.moveTicks = 0;
         this.x = 1;
         this.y = 1;
@@ -629,7 +629,6 @@ var Employee = (function () {
                 this.path = result.toPath();
             }
             else {
-                console.log("no lowest for " + wants);
             }
             var end = new Date().getTime();
             var time = end - start;
@@ -699,19 +698,28 @@ var Employee = (function () {
         }
         return c;
     };
-    Employee.prototype.draw = function (paper) {
+    Employee.prototype.draw = function (paper, selected) {
         var _this = this;
         if (this.drawingElements.length == 0) {
-            //var e = paper.circle((this.x + .5) * GameVals.tileSize, (this.y + .5) * GameVals.tileSize, GameVals.tileSize * .4).attr({ fill: '#f00', stroke: 'f00' });
+            var e = paper.circle((this.x + .5) * GameVals.tileSize, (this.y + .5) * GameVals.tileSize, GameVals.tileSize * .4).attr({ fill: '#08f', opacity: '0' });
+            this.drawingElements.push(e);
             var e = paper.image("img/dev.png", (this.x + .1) * GameVals.tileSize, (this.y + .1) * GameVals.tileSize, 16, 16);
             this.drawingElements.push(e);
         }
         this.drawingElements.forEach(function (value) {
             value.animate({
                 "x": (_this.x + .1) * GameVals.tileSize,
-                "y": (_this.y + .1) * GameVals.tileSize
+                "y": (_this.y + .1) * GameVals.tileSize,
+                "cx": (_this.x + .5) * GameVals.tileSize,
+                "cy": (_this.y + .5) * GameVals.tileSize
             }, GameVals.updateInterval * 10, ">");
         });
+        if (selected == this.id) {
+            this.drawingElements[0].attr({ opacity: '.5' });
+        }
+        else {
+            this.drawingElements[0].attr({ opacity: '0' });
+        }
     };
     Employee.prototype.destroy = function () {
         this.drawingElements.forEach(function (value) { value.remove(); });
