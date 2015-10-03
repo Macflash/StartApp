@@ -23,6 +23,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="gameObjects.js" />
+    <Content Include="img\dev.png" />
     <Content Include="vendor\angular-cookies.js" />
     <Content Include="vendor\angular.js" />
     <Content Include="css\app.css" />

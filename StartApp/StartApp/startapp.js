@@ -50,12 +50,20 @@ app.controller('mainGameController', function ($scope, $interval) {
         // increment tick counter
         $scope.game.tick++;
 
+        if ($scope.game.code >= CodeMilestones[$scope.game.milestone]) {
+            $scope.game.milestone++;
+        }
+
         // increment day counter
         if ($scope.game.tick >= GameVals.ticksPerDay) {
             $scope.game.tick = 0;
             $scope.game.day++;
         }
-        
+
+        if($scope.game.tick % 50 == 0){
+            $scope.codebar = 100 * $scope.game.code / CodeMilestones[$scope.game.milestone];
+        }
+
         // if its the first tick of the first day of the pay period pay people
         if ($scope.game.day % GameVals.daysPerPayPeriod == 0 && $scope.game.tick == 0) {
             for (var e in $scope.game.employees) {

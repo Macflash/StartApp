@@ -8,8 +8,8 @@
         <tab heading="Employees">
             <input type="button" value="Hire" ng-click="hire()" />
             <input type="button" value="Fire" ng-click="fire()" /><br />
-            <div employee-display-div ng-repeat="employee in game.employees" style="clear:both;">
-                <div employee-detail style="background-color: lightgray; height: 40px; float:left;">
+            <div style="clear:both; overflow-x: auto;">
+                <div ng-repeat="employee in game.employees" style="background-color: floralwhite; height: 60px; float:left;">
                     {{employee.currentAction.name}}
                 </div>
             </div>

@@ -26,7 +26,10 @@
                 <div app-tabs></div>
                 <div style="clear:both;">
                     <div app-sidebar style="float:left;"></div>
-                    <div id="StartAppCanvas" style="float:left;"></div>
+                    <div style="float:left;">
+                        <div><progressbar style="width: 100%" animate="false" value="game.day % 14" max="13"></progressbar></div>
+                        <div id="StartAppCanvas"></div>
+                    </div>
                 </div>
             </div>
         </div>

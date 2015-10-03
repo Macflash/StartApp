@@ -10,6 +10,8 @@ enum NeedLevel { satisfied, want, urgent };
 
 enum NeedType { sleep, water, food, bathroom, nicotine, work, coffee, fun };
 
+const CodeMilestones = [ 1000, 5000, 10000, 25000, 50000, 100000, 250000, 1000000, 1000000000 ];
+
 // can have multiple requirements, like time
 // or multiple steps which could be like a chain of actions
 class Action {
@@ -67,13 +69,15 @@ class Game {
     day: number;
     money: number;
     code: number;
+    milestone: number;
     bugs: Array<number>;
     office: Office;
     employees: Array<Employee>;
     furniture: Array<IFurniture>;
     constructor() {
+        this.milestone = 0;
         this.tick = 0;
-        this.day = 1;
+        this.day = 0;
         this.money = 10000;
         this.code = 0;
         this.bugs = new Array<number>();
@@ -689,6 +693,9 @@ class Employee {
         else {
             //follow path
             if (this.x == this.path.x && this.y == this.path.y) {
+                this.drawingElements.forEach((value: RaphaelElement) => {
+                    value.toFront();
+                });
                 this.path = this.path.next;
                 if (this.path != null) {
                     //can we go there?
@@ -697,14 +704,12 @@ class Employee {
                         var t = <any>GetTopFurniturePiece(office.grid[this.path.x][this.path.y]);
                         if (t.hasOwnProperty('occupied')) {
                             t.occupied = this;
-                            console.log("occupying dis");
                         }
                         //and add yourself to the new one!
                         this.x = this.path.x;
                         this.y = this.path.y;
                     }
                     else {
-                        console.log("recalculating!");
                         this.path = null;
                         this.moveTicks = 100;
                     }
@@ -762,13 +767,14 @@ class Employee {
 
     draw(paper: RaphaelPaper) {
         if (this.drawingElements.length == 0) {
-            var e = paper.circle((this.x + .5) * GameVals.tileSize, (this.y + .5) * GameVals.tileSize, GameVals.tileSize * .4).attr({ fill: '#f00', stroke: 'f00' });
+            //var e = paper.circle((this.x + .5) * GameVals.tileSize, (this.y + .5) * GameVals.tileSize, GameVals.tileSize * .4).attr({ fill: '#f00', stroke: 'f00' });
+            var e = paper.image("img/dev.png", (this.x + .1) * GameVals.tileSize, (this.y + .1) * GameVals.tileSize, 16, 16);
             this.drawingElements.push(e);
         }
-        this.drawingElements.forEach((value: RaphaelElement, index: number, array: RaphaelElement[]) => {
+        this.drawingElements.forEach((value: RaphaelElement) => {
             value.animate({
-                "cx": (this.x + .5) * GameVals.tileSize,
-                "cy": (this.y + .5) * GameVals.tileSize
+                "x": (this.x + .1) * GameVals.tileSize,
+                "y": (this.y + .1) * GameVals.tileSize
             }, GameVals.updateInterval * 10, ">");
         });
     }
