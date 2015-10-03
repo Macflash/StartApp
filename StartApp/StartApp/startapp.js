@@ -66,6 +66,7 @@ app.controller('mainGameController', function ($scope, $interval) {
 
         // if its the first tick of the first day of the pay period pay people
         if ($scope.game.day % GameVals.daysPerPayPeriod == 0 && $scope.game.tick == 0) {
+            $scope.game.week++;
             for (var e in $scope.game.employees) {
                 $scope.game.money -= $scope.game.employees[e].salary;
             }

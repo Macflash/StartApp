@@ -67,6 +67,7 @@ function FindAction(need: NeedType) {
 class Game {
     tick: number;
     day: number;
+    week: number;
     money: number;
     code: number;
     milestone: number;
@@ -78,6 +79,7 @@ class Game {
         this.milestone = 0;
         this.tick = 0;
         this.day = 0;
+        this.week = 0;
         this.money = 10000;
         this.code = 0;
         this.bugs = new Array<number>();
@@ -446,10 +448,13 @@ class Exit extends Furniture {
         if (this.drawingElements.length == 0) {
             // Create our drawing element
             var e = paper.rect(x * GameVals.tileSize, y * GameVals.tileSize, GameVals.tileSize, GameVals.tileSize
-            ).attr({ fill: '#ff3333', opacity: '.5' });
+            ).attr({ fill: '#ff3333' });
             e.click(function () { clickHandler(x, y, "exit"); });
             this.drawingElements.push(e);
         }
+        this.drawingElements.forEach((value: RaphaelElement) => {
+            value.toFront();
+        });
         super.draw(paper, x, y, clickHandler);
     }
     tileProvides(x?: boolean): SlotType[] {
