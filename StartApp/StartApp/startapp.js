@@ -5,6 +5,8 @@
 var app = angular.module('startApp', ['ui.bootstrap']);
 
 app.controller('mainGameController', function ($scope, $interval) {
+    $scope.placableFurniture = PlacableFurniture;
+    console.log($scope.placableFurniture);
     $scope.playing = false;
     $scope.interval = null;
     $scope.currentClickType = "select";

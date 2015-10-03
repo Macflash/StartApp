@@ -15,14 +15,10 @@
             </div>
         </tab>
         <tab heading="Build">
-            {{currentClickType}} // 
-            <input type="button" value="Wall" ng-click="setClickType('wall')" />
-            <input type="button" value="Big Desk" ng-click="setClickType('bigdesk')" />
-            <input type="button" value="Desk" ng-click="setClickType('desk')" />
-            <input type="button" value="Computer" ng-click="setClickType('computer')" />
-            <input type="button" value="Monitor" ng-click="setClickType('monitor')" />
+            {{currentClickType}}<br />
             <input type="button" value="Demolish" ng-click="setClickType('demolish')" />
             <input type="button" value="Cancel" ng-click="setClickType('select')" />
+            <input type="button" value="{{c.name}}" ng-click="setClickType(c)" ng-repeat="c in placableFurniture"/>
         </tab>
     </tabset>
 </div>

@@ -40,16 +40,17 @@ class Action {
 }
 
 var Actions = new Array<Action>();
-//Actions.push(new Action("Sleep", 6, NeedType.sleep, [SlotType.exit]));
-//Actions.push(new Action("Get Water", 0, NeedType.water, [SlotType.sink]));
+Actions.push(new Action("Sleep", 6, NeedType.sleep, [SlotType.exit]));
+Actions.push(new Action("Get Water", 0, NeedType.water, [SlotType.sink]));
 Actions.push(new Action("Get Food", 1, NeedType.food, [SlotType.exit]));
-//Actions.push(new Action("Use Bathroom", 0, NeedType.bathroom, [SlotType.toilet]));
+Actions.push(new Action("Use Bathroom", 0, NeedType.bathroom, [SlotType.toilet]));
 Actions.push(new Action("Smoke", 0, NeedType.nicotine, [SlotType.exit]));
 Actions.push(new Action("Work", .5, NeedType.work, [SlotType.computer, SlotType.monitor]));
-//Actions.push(new Action("Make Coffee", .1, NeedType.coffee, [SlotType.coffeemachine]));
+Actions.push(new Action("Make Coffee", .1, NeedType.coffee, [SlotType.coffeemachine]));
 
 function FindAction(need: NeedType) {
     for (var k in Actions) {
+        //should check here to see if there is a tile that actually provides this first
         if (Actions[k].satisfies == need) {
             var t = Actions[k].clone();
             console.log("picked " + t.name + " it will take " + t.ticksToFinish); 
@@ -96,11 +97,11 @@ class Game {
         }
 
         // check the clicktype
-        if (clicktype == 'demolish') { 
+        if (clicktype == 'demolish') {
             if (last == null) {
                 console.log("Can't demolish that");
                 console.log(cur);
-            }  
+            }
             else {
                 if (cur.parent != null) {
                     cur.parent.destroy();
@@ -111,46 +112,16 @@ class Game {
                 last.slot = null;
             }
         }
-        else if (clicktype == 'wall') {
-            if (cur.provides == SlotType.floor) {
-                this.office.add(x, y, new Wall());
-            }
-            else {
-                console.log("Can't build wall there");
-            }
-        }
-        else if (clicktype == 'desk') {
-            if (cur.provides == SlotType.floor) {
-                this.office.add(x, y, new BasicDeskPiece());
-            }
-            else {
-                console.log("Can't build desk there");
+
+        else if (typeof (clicktype) == typeof (Function)) {
+            var t = new clicktype();
+            console.log(t);
+            if (this.money > t.cost) {
+                this.money -= t.cost;
+                this.office.add(x, y, t);
             }
         }
-        else if (clicktype == 'bigdesk') {
-            if (cur.provides == SlotType.floor) {
-                this.office.add(x, y, new BigDesk());
-            }
-            else {
-                console.log("Can't build big desk there");
-            }
-        }
-        else if (clicktype == 'computer') {
-            if (cur.provides == SlotType.counter) {
-                this.office.add(x, y, new Computer());
-            }
-            else {
-                console.log("Can't build computer there");
-            }
-        }
-        else if (clicktype == 'monitor') {
-            if (cur.provides == SlotType.counter) {
-                this.office.add(x, y, new Monitor());
-            }
-            else {
-                console.log("Can't build monitor there");
-            }
-        }
+
     }
 }
 
@@ -243,7 +214,11 @@ class Office {
     }
 }
 
+
+var PlacableFurniture = new Array<Function>();
+
 interface IFurniture {
+    cost: number;
     // for tree structure of large furniture
     parent: IFurniture;
     rightChild: IFurniture;
@@ -266,6 +241,7 @@ interface IFurniture {
 }
 
 abstract class Furniture implements IFurniture {
+    cost: number;
     // for tree structure of large furniture
     parent: IFurniture;
     rightChild: IFurniture;
@@ -291,6 +267,7 @@ abstract class Furniture implements IFurniture {
         }
     }
     constructor() {
+        this.cost = 100;
         this.parent = null;
         this.rightChild = null;
         this.downChild = null;
@@ -387,6 +364,7 @@ class Wall extends Furniture {
         super.draw(paper, x, y, clickHandler);
     }
 }
+PlacableFurniture.push(Wall);
 
 class BasicDeskPiece extends Furniture {
     constructor() {
@@ -408,15 +386,29 @@ class BasicDeskPiece extends Furniture {
 }
 
 class WorkSpot extends Furniture {
+    occupied: Employee;
+    c: Coord;
     constructor() {
         super();
         this.requires = SlotType.floor;
         this.provides = SlotType.workspace;
+        this.occupied = null;
+        this.c = new Coord(0, 0);
     }
-    passable() {
-        return true;
+    passable(): boolean {
+        if (this.occupied == null) {
+            return true;
+        }
+        if (this.occupied.x != this.c.x || this.occupied.y != this.c.y) {
+            this.occupied = null;
+            return true;
+        }
+        console.log("occupied");
+        return false;
     }
     draw(paper: RaphaelPaper, x: number, y: number, clickHandler: Function) {
+        this.c.x = x;
+        this.c.y = y;
         // we have no drawing elements!
         if (this.drawingElements.length == 0) {
             // Create our drawing element
@@ -461,6 +453,28 @@ class Exit extends Furniture {
     }
 }
 
+class Table extends Furniture {
+    constructor() {
+        super();
+        this.requires = SlotType.floor;
+        this.provides = SlotType.counter;
+        this.downChild = new WorkSpot();
+        this.downChild.parent = this;
+    }
+    draw(paper: RaphaelPaper, x: number, y: number, clickHandler: Function) {
+        // we have no drawing elements!
+        if (this.drawingElements.length == 0) {
+            // Create our drawing element
+            var e = paper.rect(x * GameVals.tileSize, y * GameVals.tileSize, GameVals.tileSize, GameVals.tileSize
+            ).attr({ fill: '#FEE' });
+            e.click(function () { clickHandler(x, y, "table"); });
+            this.drawingElements.push(e);
+        }
+        super.draw(paper, x, y, clickHandler);
+    }
+}
+PlacableFurniture.push(Table);
+
 class BigDesk extends Furniture {
     constructor() {
         super();
@@ -489,6 +503,7 @@ class BigDesk extends Furniture {
         super.draw(paper, x, y, clickHandler);
     }
 }
+PlacableFurniture.push(BigDesk);
 
 class Computer extends Furniture{
     constructor() {
@@ -510,6 +525,7 @@ class Computer extends Furniture{
         super.draw(paper, x, y, clickHandler);
     }
 }
+PlacableFurniture.push(Computer);
 
 class Monitor extends Furniture{
     constructor() {
@@ -530,6 +546,93 @@ class Monitor extends Furniture{
         }
         super.draw(paper, x, y, clickHandler);
     }
+}
+PlacableFurniture.push(Monitor);
+
+class CoffeeMachine extends Furniture {
+    constructor() {
+        super();
+        this.requires = SlotType.counter;
+        this.provides = SlotType.coffeemachine;
+    }
+    draw(paper: RaphaelPaper, x: number, y: number, clickHandler: Function) {
+        // we have no drawing elements!
+        if (this.drawingElements.length == 0) {
+            // Create our drawing element
+            var e = paper.rect(
+                (x + .4) * GameVals.tileSize, (y + .3) * GameVals.tileSize,
+                GameVals.tileSize * .4, GameVals.tileSize * .2
+            ).attr({ fill: '#EEE' });
+            e.click(function () { clickHandler(x, y, "coffeemachine"); });
+            this.drawingElements.push(e);
+        }
+        super.draw(paper, x, y, clickHandler);
+    }
+}
+PlacableFurniture.push(CoffeeMachine);
+
+class Toilet extends WorkSpot {
+    constructor() {
+        super();
+        this.requires = SlotType.floor;
+        this.provides = SlotType.toilet;
+    }
+    tileProvides(): SlotType[] {
+        return [SlotType.toilet];
+    }
+    draw(paper: RaphaelPaper, x: number, y: number, clickHandler: Function) {
+        // we have no drawing elements!
+        if (this.drawingElements.length == 0) {
+            // Create our drawing element
+            var e = paper.ellipse(
+                (x + .5) * GameVals.tileSize, (y + .5) * GameVals.tileSize,
+                GameVals.tileSize * .4, GameVals.tileSize * .5
+            ).attr({ fill: '#DDD' });
+            e.click(function () { clickHandler(x, y, "toilet"); });
+            this.drawingElements.push(e);
+            e = paper.rect(
+                (x + .1) * GameVals.tileSize, (y + .1) * GameVals.tileSize,
+                GameVals.tileSize * .8, GameVals.tileSize * .2
+            ).attr({ fill: '#EEE' });
+            e.click(function () { clickHandler(x, y, "toilet"); });
+            this.drawingElements.push(e);
+        }
+        super.draw(paper, x, y, clickHandler);
+    }
+}
+PlacableFurniture.push(Toilet);
+
+class Sink extends Furniture {
+    constructor() {
+        super();
+        this.requires = SlotType.counter;
+        this.provides = SlotType.sink;
+    }
+    draw(paper: RaphaelPaper, x: number, y: number, clickHandler: Function) {
+        // we have no drawing elements!
+        if (this.drawingElements.length == 0) {
+            // Create our drawing element
+            var e = paper.ellipse(
+                (x + .5) * GameVals.tileSize, (y + .5) * GameVals.tileSize,
+                GameVals.tileSize * .4, GameVals.tileSize * .3
+            ).attr({ fill: '#DDD' });
+            e.click(function () { clickHandler(x, y, "sink"); });
+            this.drawingElements.push(e);
+        }
+        super.draw(paper, x, y, clickHandler);
+    }
+}
+PlacableFurniture.push(Sink);
+
+
+function GetTopFurniturePiece(start): IFurniture {
+    var last = null;
+    var cur = start;
+    while (cur.slot != null && typeof(cur.slot) != typeof(Employee)) {
+        last = cur;
+        cur = cur.slot;
+    }
+    return cur;
 }
 
 function Contains(hay: SlotType[], needles: SlotType[]): boolean{
@@ -568,7 +671,7 @@ class Employee {
     }
     move(wants: SlotType[], office: Office) {
         if (Contains(office.grid[this.x][this.y].tileProvides(), wants)) {
-            //console.log("THERE!");
+            console.log("THERE!");
         }
         else if (this.path == null) {
             var start = new Date().getTime();
@@ -582,8 +685,6 @@ class Employee {
             }
             var end = new Date().getTime();
             var time = end - start;
-            //console.log('Execution time: ' + time);
-            //console.log(this.path);
         }
         else {
             //follow path
@@ -592,13 +693,20 @@ class Employee {
                 if (this.path != null) {
                     //can we go there?
                     if (office.grid[this.path.x][this.path.y].passable()) {
-                        //move there!
+                        //remove yourself from the last place
+                        var t = <any>GetTopFurniturePiece(office.grid[this.path.x][this.path.y]);
+                        if (t.hasOwnProperty('occupied')) {
+                            t.occupied = this;
+                            console.log("occupying dis");
+                        }
+                        //and add yourself to the new one!
                         this.x = this.path.x;
                         this.y = this.path.y;
                     }
                     else {
                         console.log("recalculating!");
                         this.path = null;
+                        this.moveTicks = 100;
                     }
                 }
                 else {
@@ -676,6 +784,12 @@ class PathNode {
     x: number;
     y: number;
     next: PathNode;
+    last(): PathNode {
+        if (this.next == null) {
+            return this;
+        }
+        return this.next.last();
+    }
     constructor(x: number, y: number, n: PathNode) {
         this.x = x;
         this.y = y;
@@ -719,7 +833,8 @@ class SearchGrid {
             }
         }
         if (mindex == -1) {
-            console.log("ERROR: didn't find lowest");
+            // patience padawan
+            //console.log("ERROR: didn't find lowest");
         }
         return array[mindex];
     }
