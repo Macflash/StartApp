@@ -71,7 +71,8 @@ class Game {
     money: number;
     code: number;
     milestone: number;
-    bugs: Array<number>;
+    bugs: number;
+    users: number;
     office: Office;
     employees: Array<Employee>;
     furniture: Array<IFurniture>;
@@ -82,15 +83,30 @@ class Game {
         this.week = 0;
         this.money = 10000;
         this.code = 0;
-        this.bugs = new Array<number>();
+        this.bugs = 0;
         this.office = new Office();
-
+        this.users = 0;
         this.employees = new Array<Employee>();
         this.employees.push(new Employee(0));
 
         this.furniture = new Array<IFurniture>();
     }
 
+    update() {
+        this.users += Math.pow(3, Math.log(this.code)) / 10;
+
+        for (var e in this.employees) {
+            if (this.employees[e].update(this.office)) {
+                // they made a code!
+                // see if they made a bug!
+                this.code++;
+                var bugrate = Math.pow(2, Math.log(this.code)) / 10;
+                if ((Math.random() * 100) < bugrate) {
+                    this.bugs++;
+                }
+            }
+        }
+    }
     clickHandler(clicktype, x, y, sourcetype) {
         console.log(clicktype + " click at " + x + "," + y + " from " + sourcetype);
         
@@ -240,7 +256,7 @@ interface IFurniture {
     slot: IFurniture;
     draw(paper: RaphaelPaper, x: number, y: number, clickHandler: Function);
     destroy();
-    passable(): boolean;
+    passable(id?: number): boolean;
 
     // what this piece itself provides
     tileProvides(x?: boolean): SlotType[];
@@ -300,14 +316,14 @@ abstract class Furniture implements IFurniture {
             this.drawingElements = null;
         }
     }
-    passable(): boolean {
+    passable(id?: number): boolean {
         // if we dont have floor available we aren't passable
         if (this.provides != SlotType.floor) {
             return false;
         }
         // if we have children in our floor slot then let them decide
         if (this.slot != null) {
-            return this.slot.passable();
+            return this.slot.passable(id);
         }
         // otherwise we are clear!
         return true;
@@ -401,12 +417,11 @@ class WorkSpot extends Furniture {
         this.occupied = null;
         this.c = new Coord(0, 0);
     }
-    passable(): boolean {
+    passable(id?: number): boolean {
         if (this.occupied == null) {
             return true;
         }
-        if (this.occupied.x != this.c.x || this.occupied.y != this.c.y) {
-            this.occupied = null;
+        if (id == this.occupied.id) {
             return true;
         }
         return false;
@@ -689,6 +704,9 @@ class Employee {
             var result = searcher.run();
             if (result != null) {
                 this.path = result.toPath();
+                var l = this.path.last();
+                var k = <WorkSpot>GetTopFurniturePiece(office.grid[l.x][l.y]);
+                k.occupied = this;
             }
             else {
                 //console.log("no lowest for " + wants);
@@ -697,6 +715,13 @@ class Employee {
             var time = end - start;
         }
         else {
+            var n = this.path.last();
+            if (!office.grid[n.x][n.y].passable(this.id)) {
+                console.log("nulled path");
+                this.path = null;
+                this.moveTicks = 100;
+                return 0;
+            }
             //follow path
             if (this.x == this.path.x && this.y == this.path.y) {
                 this.drawingElements.forEach((value: RaphaelElement) => {
@@ -705,13 +730,17 @@ class Employee {
                 this.path = this.path.next;
                 if (this.path != null) {
                     //can we go there?
-                    if (office.grid[this.path.x][this.path.y].passable()) {
+                    if (office.grid[this.path.x][this.path.y].passable(this.id)) {
                         //remove yourself from the last place
+                        var t = <any>GetTopFurniturePiece(office.grid[this.x][this.y]);
+                        if (t.hasOwnProperty('occupied')) {
+                            t.occupied = null;
+                        }
+                        //and add yourself to the new one!
                         var t = <any>GetTopFurniturePiece(office.grid[this.path.x][this.path.y]);
                         if (t.hasOwnProperty('occupied')) {
                             t.occupied = this;
                         }
-                        //and add yourself to the new one!
                         this.x = this.path.x;
                         this.y = this.path.y;
                     }

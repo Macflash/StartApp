@@ -43,15 +43,11 @@ app.controller('mainGameController', function ($scope, $interval) {
             $scope.game.employees[e].draw($scope.paper, $scope.selected);
         }
     }
-    $scope.update = function () {
-        for (var e in $scope.game.employees) {
-            $scope.game.code += $scope.game.employees[e].update($scope.game.office);
-        }
-    }
     $scope.run = function () {
+        var start = Date.now();
         // increment tick counter
         $scope.game.tick++;
-
+        
         if ($scope.game.code >= CodeMilestones[$scope.game.milestone]) {
             $scope.game.milestone++;
         }
@@ -74,7 +70,7 @@ app.controller('mainGameController', function ($scope, $interval) {
             }
         }
 
-        $scope.update();
+        $scope.game.update();
         $scope.draw();
     }
 

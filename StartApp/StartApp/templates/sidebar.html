@@ -1,9 +1,8 @@
-﻿<div ng-controller="appSidebarController" style="width: 100px; padding: 5px;">
+﻿<div ng-controller="appSidebarController" style="width: 150px; padding: 5px;">
     Money: {{game.money}}<br />
-    Code: {{game.code}}<br />
-    <progressbar value="codebar" type="warning"></progressbar>
-    Bugs: {{game.bugs.length}}<br />
+    Code: <progressbar value="codebar" type="warning">{{game.code}}</progressbar>
+    Users: {{game.users | number: 0}}<br />
+    Bugs: {{game.bugs}}<br />
     Employees: {{game.employees.length}}<br />
     Furniture: {{game.furniture.length}}<br />
-    {{selected}}
 </div>
