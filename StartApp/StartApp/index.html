@@ -18,11 +18,11 @@
 <body>
     <div ng-app="startApp">
         <div ng-controller="mainGameController">
-            <div ng-hide="playing">
-                Welcome! Would you like to play?
+            <div ng-hide="playing" style="text-align:center;padding-top:150px;">
+                Welcome! Would you like to play?<br />
                 <input type="button" value="PLAY!" ng-click="playing=true; start();" />
             </div>
-            <div ng-show="playing">
+            <div ng-show="playing" style="padding: 5px;">
                 <div app-tabs></div>
                 <div style="clear:both;">
                     <div app-sidebar style="float:left;"></div>

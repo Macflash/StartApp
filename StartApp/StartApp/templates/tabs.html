@@ -8,15 +8,17 @@
         <tab heading="Employees">
             <input type="button" value="Hire" ng-click="hire()" />
             <input type="button" value="Fire" ng-click="fire()" /><br />
-            <div style="clear:both; overflow-x: auto;">
-                <div ng-repeat="employee in game.employees" style="text-align: center; padding: 5px; background-color: beige; height: 50px; width: 50px; margin-right: 5px; float:left;">
-                    <div ng-show="selected!=employee.id" ng-click="$parent.$parent.$parent.selected=employee.id">
-                        {{employee.id}} <br />
-                        {{employee.currentAction.name}}
-                    </div>
-                    <div ng-show="selected==employee.id" ng-click="$parent.$parent.$parent.selected=-1" style="background-color: red;">
-                        {{employee.id}} <br />
-                        {{employee.currentAction.name}}
+            <div style="width: 100%; overflow-x: auto; height: 60px; overflow-y:hidden;">
+                <div style="clear:both;height: 60px; display: flex; flex-flow:row">
+                    <div ng-repeat="employee in game.employees" style="text-align: center; padding: 5px; background-color: beige; height: 50px; width: 50px; margin-right: 5px; float:left;">
+                        <div ng-show="selected!=employee.id" ng-click="$parent.$parent.$parent.selected=employee.id">
+                            {{employee.id}} <br />
+                            {{employee.currentAction.name}}
+                        </div>
+                        <div ng-show="selected==employee.id" ng-click="$parent.$parent.$parent.selected=-1" style="background-color: red;">
+                            {{employee.id}} <br />
+                            {{employee.currentAction.name}}
+                        </div>
                     </div>
                 </div>
             </div>
